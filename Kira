@@ -1,0 +1,931 @@
+-- LUNA UI v3.0 - Left Side Tabs
+-- Clean design | Purple/Pink theme | Mobile ready
+
+local LunaUI = {}
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- ============ CONFIGURATION ============
+LunaUI.Config = {
+    Theme = "Luna",
+    AccentColor = Color3.fromRGB(100, 80, 255), -- Purple
+    SecondaryAccent = Color3.fromRGB(255, 80, 120), -- Pink
+    TransitionSpeed = 0.2,
+    MobileOptimized = UserInputService.TouchEnabled
+}
+
+-- ============ LUNA THEME ============
+local currentTheme = {
+    Background = Color3.fromRGB(18, 18, 22),
+    Main = Color3.fromRGB(25, 25, 30),
+    Surface = Color3.fromRGB(32, 32, 38),
+    SurfaceHover = Color3.fromRGB(40, 40, 48),
+    Primary = Color3.fromRGB(100, 80, 255),
+    PrimaryHover = Color3.fromRGB(120, 100, 255),
+    Secondary = Color3.fromRGB(255, 80, 120),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextSecondary = Color3.fromRGB(160, 160, 170),
+    Border = Color3.fromRGB(45, 45, 55),
+    Success = Color3.fromRGB(40, 200, 120),
+    Error = Color3.fromRGB(255, 60, 60),
+    Warning = Color3.fromRGB(255, 180, 40)
+}
+
+-- ============ UTILITIES ============
+local function tween(obj, props, duration)
+    local tween = TweenService:Create(obj, TweenInfo.new(duration or LunaUI.Config.TransitionSpeed, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
+    tween:Play()
+    return tween
+end
+
+-- ============ DRAGGING SYSTEM ============
+local function makeDraggable(frame, dragHandle)
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    
+    dragHandle = dragHandle or frame
+    
+    local function onInputBegan(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            return true
+        end
+    end
+    
+    local function onInputChanged(input)
+        if dragging then
+            if input.UserInputType == Enum.UserInputType.MouseMovement or 
+               input.UserInputType == Enum.UserInputType.Touch then
+                local delta = input.Position - dragStart
+                frame.Position = UDim2.new(
+                    startPos.X.Scale,
+                    startPos.X.Offset + delta.X,
+                    startPos.Y.Scale,
+                    startPos.Y.Offset + delta.Y
+                )
+            end
+        end
+    end
+    
+    local function onInputEnded(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end
+    
+    dragHandle.InputBegan:Connect(onInputBegan)
+    dragHandle.InputChanged:Connect(onInputChanged)
+    dragHandle.InputEnded:Connect(onInputEnded)
+    dragHandle.TouchEnded:Connect(function() dragging = false end)
+end
+
+-- ============ WINDOW WITH LEFT SIDE TABS ============
+function LunaUI:CreateWindow(config)
+    config = config or {}
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "LunaUI_" .. (config.Name or "Window")
+    screenGui.Parent = config.Parent or CoreGui
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    
+    -- Main Container
+    local container = Instance.new("Frame")
+    container.Size = config.Size or UDim2.new(0, 700, 0, 500)
+    container.Position = UDim2.new(0.5, -350, 0.5, -250)
+    container.BackgroundTransparency = 1
+    container.Parent = screenGui
+    
+    -- Main Frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(1, 0, 1, 0)
+    mainFrame.BackgroundColor3 = currentTheme.Main
+    mainFrame.BorderSizePixel = 0
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = mainFrame
+    mainFrame.Parent = container
+    
+    -- Shadow
+    local shadow = Instance.new("ImageLabel")
+    shadow.Size = UDim2.new(1, 20, 1, 20)
+    shadow.Position = UDim2.new(0, -10, 0, -10)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://1316045217"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = 0.65
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(20, 20, 20, 20)
+    shadow.Parent = mainFrame
+    
+    -- Title Bar (Top)
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, LunaUI.Config.MobileOptimized and 60 or 50)
+    titleBar.BackgroundColor3 = currentTheme.Surface
+    titleBar.BorderSizePixel = 0
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 12)
+    titleCorner.Parent = titleBar
+    titleBar.Parent = mainFrame
+    
+    -- Title Text
+    local titleText = Instance.new("TextLabel")
+    titleText.Size = UDim2.new(1, -120, 1, 0)
+    titleText.Position = UDim2.new(0, 20, 0, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.Text = config.Title or "Luna UI"
+    titleText.TextColor3 = currentTheme.Text
+    titleText.TextSize = LunaUI.Config.MobileOptimized and 18 or 16
+    titleText.Font = Enum.Font.GothamSemibold
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Parent = titleBar
+    
+    -- Close Button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, LunaUI.Config.MobileOptimized and 40 or 35, 0, LunaUI.Config.MobileOptimized and 40 or 35)
+    closeBtn.Position = UDim2.new(1, -(LunaUI.Config.MobileOptimized and 50 or 45), 0, (LunaUI.Config.MobileOptimized and 10 or 8))
+    closeBtn.BackgroundColor3 = currentTheme.Surface
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = currentTheme.TextSecondary
+    closeBtn.TextSize = LunaUI.Config.MobileOptimized and 20 or 18
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.BorderSizePixel = 0
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 8)
+    closeCorner.Parent = closeBtn
+    closeBtn.Parent = titleBar
+    
+    closeBtn.MouseEnter:Connect(function()
+        tween(closeBtn, {BackgroundColor3 = currentTheme.Error}, 0.1)
+        tween(closeBtn, {TextColor3 = Color3.fromRGB(255, 255, 255)}, 0.1)
+    end)
+    
+    closeBtn.MouseLeave:Connect(function()
+        tween(closeBtn, {BackgroundColor3 = currentTheme.Surface}, 0.1)
+        tween(closeBtn, {TextColor3 = currentTheme.TextSecondary}, 0.1)
+    end)
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        tween(container, {BackgroundTransparency = 1}, 0.2)
+        task.wait(0.2)
+        screenGui:Destroy()
+    end)
+    
+    -- ============ LEFT SIDEBAR (TABS) ============
+    local sidebar = Instance.new("Frame")
+    sidebar.Size = UDim2.new(0, 180, 1, -50)
+    sidebar.Position = UDim2.new(0, 0, 0, 50)
+    sidebar.BackgroundColor3 = currentTheme.Surface
+    sidebar.BorderSizePixel = 0
+    sidebar.Parent = mainFrame
+    
+    local sidebarCorner = Instance.new("UICorner")
+    sidebarCorner.CornerRadius = UDim.new(0, 0)
+    sidebarCorner.Parent = sidebar
+    
+    -- Sidebar title
+    local sidebarTitle = Instance.new("TextLabel")
+    sidebarTitle.Size = UDim2.new(1, -20, 0, 40)
+    sidebarTitle.Position = UDim2.new(0, 10, 0, 10)
+    sidebarTitle.BackgroundTransparency = 1
+    sidebarTitle.Text = config.SidebarTitle or "MENU"
+    sidebarTitle.TextColor3 = currentTheme.Primary
+    sidebarTitle.TextSize = 12
+    sidebarTitle.Font = Enum.Font.GothamBold
+    sidebarTitle.TextXAlignment = Enum.TextXAlignment.Left
+    sidebarTitle.Parent = sidebar
+    
+    -- Tab buttons container
+    local tabsContainer = Instance.new("ScrollingFrame")
+    tabsContainer.Size = UDim2.new(1, -10, 1, -60)
+    tabsContainer.Position = UDim2.new(0, 5, 0, 55)
+    tabsContainer.BackgroundTransparency = 1
+    tabsContainer.ScrollBarThickness = 3
+    tabsContainer.BorderSizePixel = 0
+    tabsContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    tabsContainer.Parent = sidebar
+    
+    local tabsLayout = Instance.new("UIListLayout")
+    tabsLayout.Padding = UDim.new(0, 5)
+    tabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tabsLayout.Parent = tabsContainer
+    
+    tabsLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        tabsContainer.CanvasSize = UDim2.new(0, 0, 0, tabsLayout.AbsoluteContentSize.Y + 10)
+    end)
+    
+    -- ============ CONTENT AREA ============
+    local contentArea = Instance.new("Frame")
+    contentArea.Size = UDim2.new(1, -190, 1, -60)
+    contentArea.Position = UDim2.new(0, 190, 0, 55)
+    contentArea.BackgroundColor3 = currentTheme.Background
+    contentArea.BorderSizePixel = 0
+    contentArea.Parent = mainFrame
+    
+    local contentCorner = Instance.new("UICorner")
+    contentCorner.CornerRadius = UDim.new(0, 8)
+    contentCorner.Parent = contentArea
+    
+    -- Pages container
+    local pagesContainer = Instance.new("Frame")
+    pagesContainer.Size = UDim2.new(1, -20, 1, -20)
+    pagesContainer.Position = UDim2.new(0, 10, 0, 10)
+    pagesContainer.BackgroundTransparency = 1
+    pagesContainer.Parent = contentArea
+    
+    -- Make draggable
+    makeDraggable(container, titleBar)
+    
+    -- Store data
+    local window = {
+        ScreenGui = screenGui,
+        Container = container,
+        Sidebar = sidebar,
+        TabsContainer = tabsContainer,
+        PagesContainer = pagesContainer,
+        Tabs = {},
+        CurrentTab = nil,
+        TabsLayout = tabsLayout
+    }
+    
+    -- ============ TAB CREATION ============
+    function window:CreateTab(config)
+        local tabName = config.Name or "Tab"
+        local tabIcon = config.Icon or "📁"
+        
+        -- Tab button (left sidebar)
+        local tabBtn = Instance.new("TextButton")
+        tabBtn.Size = UDim2.new(1, -10, 0, LunaUI.Config.MobileOptimized and 50 or 45)
+        tabBtn.BackgroundTransparency = 1
+        tabBtn.Text = "  " .. tabIcon .. "  " .. tabName
+        tabBtn.TextColor3 = currentTheme.TextSecondary
+        tabBtn.TextSize = LunaUI.Config.MobileOptimized and 15 or 14
+        tabBtn.Font = Enum.Font.Gotham
+        tabBtn.TextXAlignment = Enum.TextXAlignment.Left
+        tabBtn.BorderSizePixel = 0
+        tabBtn.AutoButtonColor = false
+        
+        -- Left accent bar (Luna style)
+        local accent = Instance.new("Frame")
+        accent.Size = UDim2.new(0, 3, 1, -10)
+        accent.Position = UDim2.new(0, 0, 0, 5)
+        accent.BackgroundColor3 = currentTheme.Primary
+        accent.BorderSizePixel = 0
+        accent.Visible = false
+        local accentCorner = Instance.new("UICorner")
+        accentCorner.CornerRadius = UDim.new(0, 2)
+        accentCorner.Parent = accent
+        accent.Parent = tabBtn
+        
+        -- Hover effect
+        tabBtn.MouseEnter:Connect(function()
+            if window.CurrentTab ~= tabPage then
+                tween(tabBtn, {BackgroundTransparency = 0.9}, 0.1)
+                tween(tabBtn, {TextColor3 = currentTheme.Text}, 0.1)
+            end
+        end)
+        
+        tabBtn.MouseLeave:Connect(function()
+            if window.CurrentTab ~= tabPage then
+                tween(tabBtn, {BackgroundTransparency = 1}, 0.1)
+                tween(tabBtn, {TextColor3 = currentTheme.TextSecondary}, 0.1)
+            end
+        end)
+        
+        -- Tab page (content)
+        local tabPage = Instance.new("ScrollingFrame")
+        tabPage.Size = UDim2.new(1, 0, 1, 0)
+        tabPage.BackgroundTransparency = 1
+        tabPage.BorderSizePixel = 0
+        tabPage.ScrollBarThickness = LunaUI.Config.MobileOptimized and 6 or 4
+        tabPage.ScrollBarImageColor3 = currentTheme.Primary
+        tabPage.CanvasSize = UDim2.new(0, 0, 0, 0)
+        tabPage.Parent = pagesContainer
+        tabPage.Visible = false
+        
+        -- Layout for elements
+        local elementLayout = Instance.new("UIListLayout")
+        elementLayout.Padding = UDim.new(0, 10)
+        elementLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        elementLayout.Parent = tabPage
+        
+        local pagePadding = Instance.new("UIPadding")
+        pagePadding.PaddingLeft = UDim.new(0, 5)
+        pagePadding.PaddingRight = UDim.new(0, 5)
+        pagePadding.PaddingTop = UDim.new(0, 5)
+        pagePadding.PaddingBottom = UDim.new(0, 5)
+        pagePadding.Parent = tabPage
+        
+        -- Update canvas size
+        elementLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            tabPage.CanvasSize = UDim2.new(0, 0, 0, elementLayout.AbsoluteContentSize.Y + 20)
+        end)
+        
+        -- Tab click
+        tabBtn.MouseButton1Click:Connect(function()
+            if window.CurrentTab then
+                window.CurrentTab.Visible = false
+                for _, t in pairs(window.Tabs) do
+                    tween(t.Button, {BackgroundTransparency = 1}, 0.1)
+                    tween(t.Button, {TextColor3 = currentTheme.TextSecondary}, 0.1)
+                    if t.Accent then t.Accent.Visible = false end
+                end
+            end
+            tabPage.Visible = true
+            tween(tabBtn, {BackgroundTransparency = 0.85}, 0.1)
+            tween(tabBtn, {TextColor3 = currentTheme.Primary}, 0.1)
+            accent.Visible = true
+            window.CurrentTab = tabPage
+        end)
+        
+        tabBtn.Parent = tabsContainer
+        
+        -- Store tab
+        local tab = {
+            Button = tabBtn,
+            Page = tabPage,
+            Layout = elementLayout,
+            Accent = accent,
+            Elements = {}
+        }
+        
+        table.insert(window.Tabs, tab)
+        
+        -- Select first tab automatically
+        if #window.Tabs == 1 then
+            tween(tabBtn, {BackgroundTransparency = 0.85}, 0.1)
+            tween(tabBtn, {TextColor3 = currentTheme.Primary}, 0.1)
+            accent.Visible = true
+            tabPage.Visible = true
+            window.CurrentTab = tabPage
+        end
+        
+        -- ============ ELEMENT CREATION METHODS ============
+        
+        -- Section Header
+        function tab:CreateSection(title)
+            local section = Instance.new("Frame")
+            section.Size = UDim2.new(1, 0, 0, 35)
+            section.BackgroundTransparency = 1
+            section.Parent = self.Page
+            
+            local titleLabel = Instance.new("TextLabel")
+            titleLabel.Size = UDim2.new(1, -10, 1, 0)
+            titleLabel.Position = UDim2.new(0, 5, 0, 0)
+            titleLabel.BackgroundTransparency = 1
+            titleLabel.Text = title
+            titleLabel.TextColor3 = currentTheme.Primary
+            titleLabel.TextSize = LunaUI.Config.MobileOptimized and 15 or 13
+            titleLabel.Font = Enum.Font.GothamBold
+            titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            titleLabel.Parent = section
+            
+            return {SetText = function(t) titleLabel.Text = t end}
+        end
+        
+        -- Button
+        function tab:CreateButton(config)
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, LunaUI.Config.MobileOptimized and 50 or 45)
+            btn.BackgroundColor3 = currentTheme.Surface
+            btn.Text = config.Text or "Button"
+            btn.TextColor3 = currentTheme.Text
+            btn.TextSize = LunaUI.Config.MobileOptimized and 16 or 14
+            btn.Font = Enum.Font.GothamSemibold
+            btn.BorderSizePixel = 0
+            btn.AutoButtonColor = false
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = btn
+            
+            btn.MouseEnter:Connect(function()
+                tween(btn, {BackgroundColor3 = currentTheme.SurfaceHover}, 0.1)
+            end)
+            
+            btn.MouseLeave:Connect(function()
+                tween(btn, {BackgroundColor3 = currentTheme.Surface}, 0.1)
+            end)
+            
+            btn.MouseButton1Click:Connect(function()
+                tween(btn, {BackgroundColor3 = currentTheme.Primary}, 0.05)
+                task.wait(0.05)
+                tween(btn, {BackgroundColor3 = currentTheme.Surface}, 0.05)
+                if config.Callback then pcall(config.Callback) end
+            end)
+            
+            btn.Parent = self.Page
+            return {SetText = function(t) btn.Text = t end}
+        end
+        
+        -- Toggle (Luna style - circle slider)
+        function tab:CreateToggle(config)
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, LunaUI.Config.MobileOptimized and 50 or 45)
+            frame.BackgroundColor3 = currentTheme.Surface
+            frame.BorderSizePixel = 0
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = frame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -80, 1, 0)
+            label.Position = UDim2.new(0, 15, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.Text or "Toggle"
+            label.TextColor3 = currentTheme.Text
+            label.TextSize = LunaUI.Config.MobileOptimized and 15 or 14
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = frame
+            
+            local toggleBtn = Instance.new("TextButton")
+            toggleBtn.Size = UDim2.new(0, LunaUI.Config.MobileOptimized and 60 or 50, 0, LunaUI.Config.MobileOptimized and 30 or 26)
+            toggleBtn.Position = UDim2.new(1, -(LunaUI.Config.MobileOptimized and 75 or 65), 0, (LunaUI.Config.MobileOptimized and 10 or 10))
+            toggleBtn.BackgroundColor3 = currentTheme.Background
+            toggleBtn.Text = ""
+            toggleBtn.BorderSizePixel = 0
+            toggleBtn.AutoButtonColor = false
+            
+            local toggleCorner = Instance.new("UICorner")
+            toggleCorner.CornerRadius = UDim.new(1, 0)
+            toggleCorner.Parent = toggleBtn
+            
+            local circle = Instance.new("Frame")
+            circle.Size = UDim2.new(0, LunaUI.Config.MobileOptimized and 24 or 20, 0, LunaUI.Config.MobileOptimized and 24 or 20)
+            circle.Position = UDim2.new(0, 3, 0, 3)
+            circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            circle.BorderSizePixel = 0
+            
+            local circleCorner = Instance.new("UICorner")
+            circleCorner.CornerRadius = UDim.new(1, 0)
+            circleCorner.Parent = circle
+            circle.Parent = toggleBtn
+            
+            local state = config.Default or false
+            
+            local function update()
+                if state then
+                    tween(toggleBtn, {BackgroundColor3 = currentTheme.Primary}, 0.15)
+                    tween(circle, {Position = UDim2.new(1, -(LunaUI.Config.MobileOptimized and 27 or 23), 0, 3)}, 0.15)
+                else
+                    tween(toggleBtn, {BackgroundColor3 = currentTheme.Background}, 0.15)
+                    tween(circle, {Position = UDim2.new(0, 3, 0, 3)}, 0.15)
+                end
+            end
+            
+            toggleBtn.MouseButton1Click:Connect(function()
+                state = not state
+                update()
+                if config.Callback then pcall(config.Callback, state) end
+            end)
+            
+            update()
+            toggleBtn.Parent = frame
+            frame.Parent = self.Page
+            
+            return {
+                SetValue = function(v) state = v; update() end,
+                GetValue = function() return state end
+            }
+        end
+        
+        -- Slider
+        function tab:CreateSlider(config)
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, LunaUI.Config.MobileOptimized and 80 or 70)
+            frame.BackgroundColor3 = currentTheme.Surface
+            frame.BorderSizePixel = 0
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = frame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -20, 0, 25)
+            label.Position = UDim2.new(0, 15, 0, 5)
+            label.BackgroundTransparency = 1
+            label.Text = config.Text or "Slider"
+            label.TextColor3 = currentTheme.Text
+            label.TextSize = LunaUI.Config.MobileOptimized and 15 or 14
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = frame
+            
+            local valueLabel = Instance.new("TextLabel")
+            valueLabel.Size = UDim2.new(0, 60, 0, 25)
+            valueLabel.Position = UDim2.new(1, -75, 0, 5)
+            valueLabel.BackgroundTransparency = 1
+            valueLabel.Text = tostring(config.Default or config.Min or 0)
+            valueLabel.TextColor3 = currentTheme.Primary
+            valueLabel.TextSize = LunaUI.Config.MobileOptimized and 16 or 14
+            valueLabel.Font = Enum.Font.GothamBold
+            valueLabel.Parent = frame
+            
+            local sliderBg = Instance.new("Frame")
+            sliderBg.Size = UDim2.new(1, -30, 0, LunaUI.Config.MobileOptimized and 6 or 4)
+            sliderBg.Position = UDim2.new(0, 15, 0, LunaUI.Config.MobileOptimized and 55 or 45)
+            sliderBg.BackgroundColor3 = currentTheme.Background
+            sliderBg.BorderSizePixel = 0
+            
+            local bgCorner = Instance.new("UICorner")
+            bgCorner.CornerRadius = UDim.new(1, 0)
+            bgCorner.Parent = sliderBg
+            sliderBg.Parent = frame
+            
+            local min = config.Min or 0
+            local max = config.Max or 100
+            local value = math.clamp(config.Default or min, min, max)
+            
+            local sliderFill = Instance.new("Frame")
+            sliderFill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+            sliderFill.BackgroundColor3 = currentTheme.Primary
+            sliderFill.BorderSizePixel = 0
+            
+            local fillCorner = Instance.new("UICorner")
+            fillCorner.CornerRadius = UDim.new(1, 0)
+            fillCorner.Parent = sliderFill
+            sliderFill.Parent = sliderBg
+            
+            local sliderBtn = Instance.new("TextButton")
+            sliderBtn.Size = UDim2.new(0, LunaUI.Config.MobileOptimized and 24 or 18, 0, LunaUI.Config.MobileOptimized and 24 or 18)
+            sliderBtn.Position = UDim2.new((value - min) / (max - min), -(LunaUI.Config.MobileOptimized and 12 or 9), 0, -(LunaUI.Config.MobileOptimized and 10 or 7))
+            sliderBtn.BackgroundColor3 = currentTheme.Primary
+            sliderBtn.Text = ""
+            sliderBtn.BorderSizePixel = 0
+            sliderBtn.AutoButtonColor = false
+            
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(1, 0)
+            btnCorner.Parent = sliderBtn
+            sliderBtn.Parent = sliderBg
+            
+            local dragging = false
+            
+            local function updateValue(newValue)
+                value = math.clamp(newValue, min, max)
+                local pos = (value - min) / (max - min)
+                sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+                sliderBtn.Position = UDim2.new(pos, -(LunaUI.Config.MobileOptimized and 12 or 9), 0, -(LunaUI.Config.MobileOptimized and 10 or 7))
+                valueLabel.Text = config.Suffix and tostring(value) .. " " .. config.Suffix or tostring(value)
+                if config.Callback then pcall(config.Callback, value) end
+            end
+            
+            sliderBtn.MouseButton1Down:Connect(function() dragging = true end)
+            
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                    local pos = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+                    local newValue = min + (max - min) * pos
+                    if config.Increment then
+                        newValue = math.round(newValue / config.Increment) * config.Increment
+                    end
+                    updateValue(newValue)
+                end
+            end)
+            
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = false
+                end
+            end)
+            
+            updateValue(value)
+            frame.Parent = self.Page
+            
+            return {SetValue = updateValue, GetValue = function() return value end}
+        end
+        
+        -- Dropdown (Tab down thingy)
+        function tab:CreateDropdown(config)
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, LunaUI.Config.MobileOptimized and 50 or 45)
+            frame.BackgroundColor3 = currentTheme.Surface
+            frame.BorderSizePixel = 0
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = frame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -20, 1, 0)
+            label.Position = UDim2.new(0, 15, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.Text or "Dropdown"
+            label.TextColor3 = currentTheme.Text
+            label.TextSize = LunaUI.Config.MobileOptimized and 15 or 14
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = frame
+            
+            local dropdownBtn = Instance.new("TextButton")
+            dropdownBtn.Size = UDim2.new(0, LunaUI.Config.MobileOptimized and 160 or 140, 0, LunaUI.Config.MobileOptimized and 35 or 30)
+            dropdownBtn.Position = UDim2.new(1, -(LunaUI.Config.MobileOptimized and 175 or 155), 0, (LunaUI.Config.MobileOptimized and 8 or 8))
+            dropdownBtn.BackgroundColor3 = currentTheme.Background
+            dropdownBtn.Text = config.Options and config.Options[1] or "Select"
+            dropdownBtn.TextColor3 = currentTheme.Text
+            dropdownBtn.TextSize = LunaUI.Config.MobileOptimized and 14 or 13
+            dropdownBtn.Font = Enum.Font.Gotham
+            dropdownBtn.BorderSizePixel = 0
+            
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(0, 6)
+            btnCorner.Parent = dropdownBtn
+            
+            local arrow = Instance.new("TextLabel")
+            arrow.Size = UDim2.new(0, 20, 1, 0)
+            arrow.Position = UDim2.new(1, -25, 0, 0)
+            arrow.BackgroundTransparency = 1
+            arrow.Text = "▼"
+            arrow.TextColor3 = currentTheme.TextSecondary
+            arrow.TextSize = 12
+            arrow.Font = Enum.Font.Gotham
+            arrow.Parent = dropdownBtn
+            
+            local dropdownList = Instance.new("Frame")
+            dropdownList.Size = UDim2.new(0, LunaUI.Config.MobileOptimized and 160 or 140, 0, 0)
+            dropdownList.Position = UDim2.new(1, -(LunaUI.Config.MobileOptimized and 175 or 155), 0, LunaUI.Config.MobileOptimized and 43 or 38)
+            dropdownList.BackgroundColor3 = currentTheme.Surface
+            dropdownList.BorderSizePixel = 0
+            dropdownList.Visible = false
+            dropdownList.ClipsDescendants = true
+            
+            local listCorner = Instance.new("UICorner")
+            listCorner.CornerRadius = UDim.new(0, 6)
+            listCorner.Parent = dropdownList
+            
+            local listLayout = Instance.new("UIListLayout")
+            listLayout.Padding = UDim.new(0, 2)
+            listLayout.Parent = dropdownList
+            
+            local options = config.Options or {}
+            local currentOption = config.Default or options[1]
+            
+            for _, option in pairs(options) do
+                local item = Instance.new("TextButton")
+                item.Size = UDim2.new(1, 0, 0, LunaUI.Config.MobileOptimized and 40 or 35)
+                item.BackgroundColor3 = currentTheme.Surface
+                item.Text = option
+                item.TextColor3 = currentTheme.Text
+                item.TextSize = LunaUI.Config.MobileOptimized and 14 or 13
+                item.Font = Enum.Font.Gotham
+                item.BorderSizePixel = 0
+                item.AutoButtonColor = false
+                
+                local itemCorner = Instance.new("UICorner")
+                itemCorner.CornerRadius = UDim.new(0, 4)
+                itemCorner.Parent = item
+                
+                item.MouseEnter:Connect(function()
+                    tween(item, {BackgroundColor3 = currentTheme.SurfaceHover}, 0.1)
+                end)
+                
+                item.MouseLeave:Connect(function()
+                    tween(item, {BackgroundColor3 = currentTheme.Surface}, 0.1)
+                end)
+                
+                item.MouseButton1Click:Connect(function()
+                    dropdownBtn.Text = option
+                    currentOption = option
+                    dropdownList.Visible = false
+                    tween(arrow, {Rotation = 0}, 0.2)
+                    if config.Callback then pcall(config.Callback, option) end
+                end)
+                
+                item.Parent = dropdownList
+            end
+            
+            dropdownList.Size = UDim2.new(0, LunaUI.Config.MobileOptimized and 160 or 140, 0, #options * (LunaUI.Config.MobileOptimized and 42 or 37))
+            dropdownList.Parent = frame
+            
+            local listOpen = false
+            
+            dropdownBtn.MouseButton1Click:Connect(function()
+                listOpen = not listOpen
+                dropdownList.Visible = listOpen
+                tween(arrow, {Rotation = listOpen and 180 or 0}, 0.2)
+            end)
+            
+            frame.Parent = self.Page
+            
+            return {
+                SetValue = function(opt) 
+                    dropdownBtn.Text = opt
+                    currentOption = opt
+                end,
+                GetValue = function() return currentOption end,
+                Refresh = function(newOptions)
+                    for _, child in pairs(dropdownList:GetChildren()) do
+                        if child:IsA("TextButton") then child:Destroy() end
+                    end
+                    options = newOptions
+                    for _, option in pairs(options) do
+                        local item = Instance.new("TextButton")
+                        item.Size = UDim2.new(1, 0, 0, 35)
+                        item.BackgroundColor3 = currentTheme.Surface
+                        item.Text = option
+                        item.TextColor3 = currentTheme.Text
+                        item.TextSize = 13
+                        item.Font = Enum.Font.Gotham
+                        item.BorderSizePixel = 0
+                        item.AutoButtonColor = false
+                        
+                        local itemCorner = Instance.new("UICorner")
+                        itemCorner.CornerRadius = UDim.new(0, 4)
+                        itemCorner.Parent = item
+                        
+                        item.MouseButton1Click:Connect(function()
+                            dropdownBtn.Text = option
+                            currentOption = option
+                            dropdownList.Visible = false
+                            if config.Callback then pcall(config.Callback, option) end
+                        end)
+                        
+                        item.Parent = dropdownList
+                    end
+                    dropdownList.Size = UDim2.new(0, 140, 0, #options * 37)
+                end
+            }
+        end
+        
+        -- Input
+        function tab:CreateInput(config)
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, LunaUI.Config.MobileOptimized and 50 or 45)
+            frame.BackgroundColor3 = currentTheme.Surface
+            frame.BorderSizePixel = 0
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = frame
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -20, 1, 0)
+            label.Position = UDim2.new(0, 15, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.Text or "Input"
+            label.TextColor3 = currentTheme.Text
+            label.TextSize = LunaUI.Config.MobileOptimized and 15 or 14
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Parent = frame
+            
+            local inputBox = Instance.new("TextBox")
+            inputBox.Size = UDim2.new(0, LunaUI.Config.MobileOptimized and 180 or 160, 0, LunaUI.Config.MobileOptimized and 35 or 30)
+            inputBox.Position = UDim2.new(1, -(LunaUI.Config.MobileOptimized and 195 or 175), 0, (LunaUI.Config.MobileOptimized and 8 or 8))
+            inputBox.BackgroundColor3 = currentTheme.Background
+            inputBox.Text = config.Default or ""
+            inputBox.PlaceholderText = config.Placeholder or "Type here..."
+            inputBox.TextColor3 = currentTheme.Text
+            inputBox.PlaceholderColor3 = currentTheme.TextSecondary
+            inputBox.TextSize = LunaUI.Config.MobileOptimized and 14 or 13
+            inputBox.Font = Enum.Font.Gotham
+            inputBox.BorderSizePixel = 0
+            
+            local inputCorner = Instance.new("UICorner")
+            inputCorner.CornerRadius = UDim.new(0, 6)
+            inputCorner.Parent = inputBox
+            
+            inputBox.FocusLost:Connect(function()
+                if config.Callback then pcall(config.Callback, inputBox.Text) end
+            end)
+            
+            inputBox.Parent = frame
+            frame.Parent = self.Page
+            
+            return {
+                SetValue = function(t) inputBox.Text = t end,
+                GetValue = function() return inputBox.Text end
+            }
+        end
+        
+        -- Label
+        function tab:CreateLabel(text, color)
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 0, LunaUI.Config.MobileOptimized and 35 or 30)
+            label.BackgroundTransparency = 1
+            label.Text = text
+            label.TextColor3 = color or currentTheme.TextSecondary
+            label.TextSize = LunaUI.Config.MobileOptimized and 14 or 12
+            label.Font = Enum.Font.Gotham
+            label.Parent = self.Page
+            return {SetText = function(t) label.Text = t end}
+        end
+        
+        -- Paragraph
+        function tab:CreateParagraph(config)
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 0)
+            frame.BackgroundColor3 = currentTheme.Surface
+            frame.BorderSizePixel = 0
+            frame.AutomaticSize = Enum.AutomaticSize.Y
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = frame
+            
+            local padding = Instance.new("UIPadding")
+            padding.PaddingLeft = UDim.new(0, 15)
+            padding.PaddingRight = UDim.new(0, 15)
+            padding.PaddingTop = UDim.new(0, 12)
+            padding.PaddingBottom = UDim.new(0, 12)
+            padding.Parent = frame
+            
+            local title = Instance.new("TextLabel")
+            title.Size = UDim2.new(1, 0, 0, 25)
+            title.BackgroundTransparency = 1
+            title.Text = config.Title or "Title"
+            title.TextColor3 = currentTheme.Text
+            title.TextSize = LunaUI.Config.MobileOptimized and 16 or 14
+            title.Font = Enum.Font.GothamBold
+            title.TextXAlignment = Enum.TextXAlignment.Left
+            title.Parent = frame
+            
+            local content = Instance.new("TextLabel")
+            content.Size = UDim2.new(1, 0, 0, 0)
+            content.BackgroundTransparency = 1
+            content.Text = config.Content or "Content goes here..."
+            content.TextColor3 = currentTheme.TextSecondary
+            content.TextSize = LunaUI.Config.MobileOptimized and 14 or 12
+            content.Font = Enum.Font.Gotham
+            content.TextXAlignment = Enum.TextXAlignment.Left
+            content.TextWrapped = true
+            content.AutomaticSize = Enum.AutomaticSize.Y
+            content.Parent = frame
+            
+            frame.Parent = self.Page
+            
+            return {
+                SetTitle = function(t) title.Text = t end,
+                SetContent = function(c) content.Text = c end
+            }
+        end
+        
+        return tab
+    end
+    
+    return window
+end
+
+-- ============ NOTIFICATION ============
+function LunaUI:Notify(config)
+    local notification = Instance.new("Frame")
+    notification.Size = UDim2.new(0, 350, 0, 70)
+    notification.Position = UDim2.new(1, 10, 0, 10)
+    notification.BackgroundColor3 = currentTheme.Surface
+    notification.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = notification
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 25)
+    title.Position = UDim2.new(0, 15, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Text = config.Title or "Notification"
+    title.TextColor3 = currentTheme.Text
+    title.TextSize = 15
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = notification
+    
+    local message = Instance.new("TextLabel")
+    message.Size = UDim2.new(1, -20, 0, 30)
+    message.Position = UDim2.new(0, 15, 0, 35)
+    message.BackgroundTransparency = 1
+    message.Text = config.Content or "Notification content"
+    message.TextColor3 = currentTheme.TextSecondary
+    message.TextSize = 12
+    message.Font = Enum.Font.Gotham
+    message.TextXAlignment = Enum.TextXAlignment.Left
+    message.Parent = notification
+    
+    notification.Parent = CoreGui
+    tween(notification, {Position = UDim2.new(1, -360, 0, 10)}, 0.3)
+    
+    task.wait(config.Duration or 3)
+    tween(notification, {Position = UDim2.new(1, 10, 0, 10)}, 0.3)
+    task.wait(0.3)
+    notification:Destroy()
+end
+
+-- ============ DESTROY ============
+function LunaUI:Destroy()
+    for _, gui in pairs(CoreGui:GetChildren()) do
+        if gui.Name:find("LunaUI_") then
+            gui:Destroy()
+        end
+    end
+end
+
+return LunaUI
